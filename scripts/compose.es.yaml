@@ -1,0 +1,20 @@
+# Elasticsearch 7.17.0, no plugins (Vietnamese word segmentation is done client-side with underthesea).
+# Started by scripts/setup.sh as compose project dsc26irrepro on 127.0.0.1:${ES_PORT} (default 19212); starts empty,
+# the index is built by `pipeline.py prepare` (step `ce` of run_from_scratch.sh). Data lives in volume ${COMPOSE_PROJECT_NAME}_es.
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+      cluster.routing.allocation.disk.watermark.low: 20gb
+      cluster.routing.allocation.disk.watermark.high: 15gb
+      cluster.routing.allocation.disk.watermark.flood_stage: 10gb
+    ports:
+      - "127.0.0.1:${ES_PORT:-19212}:9200"
+    volumes:
+      - es:/usr/share/elasticsearch/data
+volumes:
+  es:
+    name: ${COMPOSE_PROJECT_NAME}_es

@@ -1,0 +1,10 @@
+__pycache__
+**/__pycache__
+*.pyc
+**/*.pyc
+.git
+models
+runs
+*.zip
+*.npy
+*.npz
