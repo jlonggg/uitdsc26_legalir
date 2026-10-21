@@ -50,10 +50,11 @@ a3)
   [ -f $A3/X83.npz ] || docker run --rm $PR --entrypoint python3 $IMG /pr/price.py build | tee $A3/build.log
   [ -f $A3/model_ce+mil2/selector.json ] || docker run --rm $PR --entrypoint python3 $IMG /pr/price.py final:ce+mil2 | tee $A3/final.log;;
 private)
+  [ -n "${ONECARD:-}" ] && export GPUS=$GPU MAXGPU=1   # step all: stay on the one card GPU=$GPU
   W=$W S1D=$S1D S2D=$S2D SELMODEL=$A3/model_ce+mil2 S2AD=0,1 TAG=private bash $ROOT/scripts/run_private.sh $DATA/private-official_IR.json $B/private
   python3 $ROOT/scripts/compare.py $B/private/final/submission.zip $ART/reference/private_V2_4bb3380c_submission.zip;;
 all)
-  s=$0; bash $s ce; bash $s evidence; for k in 0 1 2 3 4; do bash $s s1 $k; done; for k in 0 1 2 3; do bash $s s2 $k; done; bash $s a3; bash $s private;;
+  s=$0; bash $s ce; bash $s evidence; for k in 0 1 2 3 4; do bash $s s1 $k; done; for k in 0 1 2 3; do bash $s s2 $k; done; bash $s a3; ONECARD=1 bash $s private;;
 *) echo "unknown step $STEP"; exit 1;;
 esac
 log "step $STEP $K done"

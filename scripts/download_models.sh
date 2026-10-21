@@ -1,6 +1,6 @@
 #!/bin/bash
 # download_models.sh — tải 5 model gốc (danh mục BTC) về models/ đúng revision đã dùng, rồi kiểm sha256 theo MODELS.sha256.
-# Chạy huggingface-cli bên trong image của repo (tự build nếu chưa có), host không cần cài gì thêm. Cần Internet, khoảng 6 GB.
+# Chạy huggingface-cli bên trong image của repo (tự build nếu chưa có), host không cần cài gì thêm. Cần Internet, khoảng 9 GB.
 # Nếu mạng yêu cầu đăng nhập HuggingFace: HF_TOKEN=... bash scripts/download_models.sh
 set -euo pipefail
 . "$(dirname "$0")/env.sh"

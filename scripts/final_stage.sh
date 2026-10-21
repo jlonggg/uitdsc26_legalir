@@ -6,14 +6,13 @@
 set -euo pipefail
 . "$(dirname "$0")/env.sh"
 O=$(readlink -f $O); P=$(readlink -f $P); W=$(readlink -f $W); SELMODEL=$(readlink -f $SELMODEL); OVERLAY=${OVERLAY:-1}; TAG=${TAG:-a}
-D=$O/predict; mkdir -p $D; for f in $P/*; do [ -d $f ] && continue; cp -n $f $D/; done
+D=$O/predict; mkdir -p $D; for f in $P/*; do [ -d $f ] || [ -e $D/${f##*/} ] || cp $f $D/; done
 cp $O/mil_public.jsonl $D/mil_public.jsonl; cp $O/mil2_public.jsonl $D/mil2_public.jsonl; rm -f $D/prediction.json $D/best_chunk_text.jsonl
 PRED=/out/predict/prediction.json
 OV=""; [ "$OVERLAY" = 1 ] && { OV="python3 train_exact_overlay.py /work/train/questions.json /out/predict/questions.json /out/predict/prediction.json /work/corpus/catalog.json /out/predict/prediction_overlay.json &&"; PRED=/out/predict/prediction_overlay.json; }
-rm -rf $O/final
 docker run --rm --name dsc26repro-$TAG-final --network host $BASE_ENV $(cfg_env $W) -e RB_OUT=/out/predict \
   -v $APP:/app:ro -v $W:/work:ro -v $SELMODEL:/model:ro -v $O:/out --entrypoint bash $IMG -c \
-  "cd /app/src && python3 selector_stage.py predict /out/predict /out/predict/questions.json /model && $OV \
+  "rm -rf /out/final && cd /app/src && python3 selector_stage.py predict /out/predict /out/predict/questions.json /model && $OV \
    python3 package.py /out/predict/questions.json $PRED /work/corpus/catalog.json /out/final" > $O/final.log 2>&1 || { log "final stage FAILED, see $O/final.log"; exit 1; }
 cat $O/final.log
 python3 - $O $P <<'PY'

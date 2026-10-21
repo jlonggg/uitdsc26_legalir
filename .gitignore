@@ -1,6 +1,6 @@
-data/
-models/
-runs/
+/data
+/models
+/runs
 # artifacts/ không phát hành; repo chỉ kèm ZIP bài nộp private làm mốc cho scripts/compare.py (bước private của run_from_scratch.sh)
 artifacts/*
 !artifacts/reference/

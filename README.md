@@ -10,6 +10,7 @@ Bản nộp gốc là `submission.zip` có sha256 `4bb3380cbb48b72276d9c8579e2d2
 
 - **Lần chấm đầu (2.080 câu):** recall 0.951643, precision 0.204135.
 - **Chấm lại:** BTC loại 103 câu private trùng warmup, còn 1.977 câu. Recall của cùng ZIP là 0.9515, đúng như trên leaderboard.
+
 Hệ thống **không đọc nhãn public, warmup hay private ở bất kỳ bước nào**. Nhãn duy nhất được đọc là `train_IR.json`.
 
 ---
@@ -18,9 +19,9 @@ Hệ thống **không đọc nhãn public, warmup hay private ở bất kỳ bư
 
 ```
 câu hỏi ─► [ce] clean_ir/pipeline.py predict ─────────────────────────────────────────────┐
-           BM25 top-100 doc (ES, underthesea word-seg) + dense exact search 3 kênh          │
+           BM25 top-60 doc (ES, underthesea word-seg) + dense exact search 3 kênh           │
            (Qwen3-Embedding-0.6B theo Điều, Vietnamese_Embedding_v2 & vietlegal-harrier theo chunk)
-           → pool ≈100 doc/câu → teacher CE Vietnamese_Reranker pass 1/2/3                  │
+           → pool ≈85 doc/câu (+≤30 Qwen3, +≤40 viemb2/harrier) → teacher CE pass 1/2/3     │
            → student CE (LoRA trên Vietnamese_Reranker) → 69 đặc trưng/doc                  │
            │                                                                                 │
            ├─► [ev] evidence K=4 chunk/doc (2 BM25 + 2 cosine viemb2 trong doc)              │
@@ -56,12 +57,9 @@ Cả 5 mô hình đều nằm trong danh sách BTC duyệt. Tham số đếm b�
 | [Qwen/Qwen3-Reranker-0.6B](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B) | S2 (+2 LoRA × 9.2M) | 595,776,512 |
 | **Tổng** (mỗi base đếm 1 lần + mọi adapter) | | **2,981,583,879 < 4B** |
 
-Tầng `ce` một mình có 2,898,502,659 tham số. Word segmentation dùng [underthesea](https://github.com/undertheseanlp/underthesea) 9.5.0 (CRF). Hệ thống không gọi API nào và không tải gì lúc chạy (`HF_HUB_OFFLINE=1`).
+Tầng `ce` dùng 4 base đầu cùng Vietnamese_Reranker và LoRA student, tổng 2,330,746,882 tham số. Word segmentation dùng [underthesea](https://github.com/undertheseanlp/underthesea) 9.5.0 (CRF). Hệ thống không gọi API nào và không tải gì lúc chạy (`HF_HUB_OFFLINE=1`).
 
-**Về cách đếm tham số:**
-- Nếu mỗi bản CE có adapter được tính là một mô hình riêng, tổng lên 6.98B.
-- Bagging các adapter trên cùng một base cho kết quả tương đương một base được nạp một lần.
-- Các adapter chỉ được nạp song song để tăng tốc; việc đó không làm tăng số tham số phân biệt.
+**Cách đếm tham số:** mỗi base được tính một lần, cộng thêm mọi adapter LoRA. Các adapter của cùng một base chỉ được nạp song song để tăng tốc, nên không làm tăng số tham số phân biệt.
 
 ---
 
@@ -87,11 +85,12 @@ Tầng `ce` một mình có 2,898,502,659 tham số. Word segmentation dùng [un
 ```bash
 git clone <repo> DSC26_IR_Repro && cd DSC26_IR_Repro
 
-# 1. Dữ liệu BTC (không kèm trong repo): đặt đúng các tên sau
-data/train_IR.json  data/public-official_IR.json  data/private-official_IR.json  data/selected-contexts/context_*.json (8.532 file)
+# 1. Dữ liệu BTC (không kèm trong repo) đặt trong data/ của repo (thư mục thật, không symlink):
+#    data/train_IR.json  data/private-official_IR.json  data/selected-contexts/context_*.json (8.532 file)
+#    Mọi script chỉ đọc dữ liệu từ data/.
 
-# 2. 5 model gốc, đúng revision đã dùng, kiểm sha256 theo scripts/MODELS.sha256 (≈6 GB, cần Internet)
-bash scripts/download_models.sh        # đã có sẵn model: ln -s /đường/dẫn/models models
+# 2. 5 model gốc, đúng revision đã dùng, kiểm sha256 theo scripts/MODELS.sha256 (≈9 GB, cần Internet)
+bash scripts/download_models.sh        # đã có sẵn model: MODELS=/đường/dẫn/models cho mọi lệnh
 
 # 3. build image, kiểm model + dữ liệu, bật Elasticsearch rỗng ở 127.0.0.1:19212 (đổi bằng ES_PORT=...)
 bash scripts/setup.sh
@@ -110,7 +109,7 @@ GPU=1 bash scripts/run_from_scratch.sh s1 0          # S1 fold 0..4 (mỗi fold 
 GPU=2 bash scripts/run_from_scratch.sh s2 0          # S2 fold 0..3                                           ≈ 30–35 GPU-h/fold
 bash scripts/run_from_scratch.sh a3                  # fit selector a3, CPU ≈ 15 phút
 MAXGPU=4 bash scripts/run_from_scratch.sh private    # suy luận private ≈ 70 GPU-h, rồi so với bản đã nộp
-# hoặc tuần tự mọi thứ trên 1 card:  GPU=0 bash scripts/run_from_scratch.sh all   (≈ 300 GPU-h)
+# hoặc tuần tự mọi thứ trên 1 card:  GPU=0 bash scripts/run_from_scratch.sh all   (≈ 310 GPU-h)
 ```
 
 Kết quả cuối: `runs/scratch/private/final/submission.zip`. `scripts/compare.py` in số câu có tập đáp án trùng với bản đã nộp.
@@ -128,7 +127,7 @@ Kết quả cuối: `runs/scratch/private/final/submission.zip`. `scripts/compar
 - Tất cả seed đều cố định: LoRA dùng `368+outer`, LightGBM dùng seed 2026/7/99/314/2718/1618, và tie-break xác định.
 - Dù vậy, huấn luyện và suy luận trên GPU (fp16 autocast, cuBLAS) **không bảo đảm trùng byte**. Kết quả được đánh giá theo recall và tỷ lệ câu có tập đáp án trùng với bản đã nộp, không theo sha.
 - S2 chỉ train fold 0–3 vì selector a3 không dùng fold 4 (cột S2 của fold 4 để NaN).
-- Muốn đo trên public trước: chạy `run_private.sh` với `data/public-official_IR.json` (cùng biến môi trường như bước `private` trong `scripts/run_from_scratch.sh`) rồi chấm bằng nhãn public nếu có. Bản gốc đạt public 0.954333 (S2 2 adapter).
+- Cùng cấu hình (selector fit trên 7.000 câu) đạt public recall 0.954583, precision 0.2058 trên 1.000 câu. Repo không kèm script chấm public.
 
 ---
 
@@ -145,7 +144,8 @@ Số đo thật trên 2080 Ti.
 | suy luận private 2.080 câu | ≈ 70 | ce 14 giờ tuần tự; S1 23 GPU-h, S2 24 GPU-h |
 
 - **Tổng cộng khoảng 310 GPU-h.**
-- Máy dùng chung dễ gặp OOM (`CUBLAS_STATUS_ALLOC_FAILED`). Scheduler tự thử lại tối đa 4 lần, mỗi lần giảm batch một nửa, và resume theo qid nên không mất tiến độ.
+- Máy dùng chung dễ gặp OOM (`CUBLAS_STATUS_ALLOC_FAILED`). Ở bước `private`, scheduler chạy mỗi job tối đa 4 lần; job chấm S1/S2 giảm batch một nửa mỗi lần thử lại, và mọi job resume theo qid nên không mất tiến độ. Các bước train không tự thử lại: chạy lại cùng lệnh để resume.
+- Container chạy bằng root, nên `models/` và `runs/` thuộc root; muốn xoá thì dùng `sudo` hoặc một container.
 
 ---
 
@@ -166,14 +166,14 @@ models/               (không commit) 5 model gốc
 runs/                 (không commit) đầu ra khi chạy
 ```
 
-- Tên index ES là `clean_ir_<owner>` với `owner = sha(source, corpus, '/work')[:20]`. Owner không phụ thuộc đường dẫn host, nên work dir di chuyển được, miễn giữ nguyên các mount `/work /contexts /models /data`.
+- Hai index ES là `clean_ir_<owner>_chunks` và `clean_ir_<owner>_wseg`, với `owner = sha(source, corpus, '/work')[:20]`. Owner không phụ thuộc đường dẫn host, nên work dir di chuyển được, miễn giữ nguyên các mount `/work /contexts /models /data`.
 - Các script đọc ES URL và tên index từ `<work>/config.json`.
 
 ---
 
 ## 7. Tuân thủ thể lệ
 
-- **Dữ liệu:** chỉ dùng `train_IR.json` (nhãn) và `selected-contexts` (corpus). Câu hỏi public/private chỉ được đọc phần văn bản. `LegalIR_warmup.json` không được dùng.
+- **Dữ liệu:** chỉ dùng `train_IR.json` (nhãn) và `selected-contexts` (corpus), đều đọc từ `data/`. Câu hỏi private chỉ được đọc phần văn bản. `LegalIR_warmup.json` không được dùng.
 - **Overlay train-exact:** nếu một câu hỏi trùng khít văn bản (sau chuẩn hoá) với một câu train, gold của câu train được đưa lên đầu. Bước này chỉ đọc `train_IR.json`. Trên private, overlay đổi đúng 1/2.080 câu.
 - **Mô hình và giới hạn:** 5 mô hình BTC duyệt, tổng 2.98B tham số, không API, chạy offline.
 - **Định dạng nộp:** mỗi câu có 1–5 doc_id, không trùng lặp, và đều thuộc catalog 8.532 văn bản. `package.py` kiểm tra rồi ghi `validation.json`.

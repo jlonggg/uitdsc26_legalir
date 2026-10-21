@@ -11,44 +11,11 @@ Pipeline độc lập đi trọn **dữ liệu BTC → huấn luyện → submis
 5. Fit ensemble LightGBM lambdarank 69 đặc trưng (6 seed), lưu model. Teacher/student pass2 dùng cùng chính sách ở train và inference.
 6. `predict` chỉ dùng model đã fit và nội dung câu hỏi; không fit lại selector. Kênh slug (TF-IDF ký tự, ngưỡng 0.45) chỉ chèn văn bản rỗng từ metadata corpus. Validate theo đủ catalog BTC và tạo ZIP duy nhất chứa `submission.json`.
 
-## Chạy từ môi trường trống
+## Chạy
 
-Cần Docker + GPU NVIDIA, corpus BTC và bốn checkpoint local (tên thư mục theo `pipeline.py::MODELS`). Không gọi inference API và không tải checkpoint lúc chạy. `model_audit.py` đếm tham số thực của toàn DAG (teacher, student có adapter, ba encoder) và bắt buộc tổng < 4 tỷ.
+Chạy qua các script ở `scripts/` của repo (README gốc §3–4): `scripts/setup.sh` build image và bật ES, `scripts/run_from_scratch.sh ce` gọi `pipeline.py prepare/train/verify` với code mount vào `/app` và dữ liệu lấy từ `data/` của repo. `model_audit.py` đếm tham số thực của toàn DAG (teacher, student có adapter, ba encoder) và bắt buộc tổng < 4 tỷ.
 
-```bash
-cd src/clean_ir
-docker build -t dsc26-clean-ir:20260908-v3 .
-docker compose -p dsc26-clean-ir up -d
-```
-
-ES riêng dùng ngưỡng dung lượng trống low/high/flood 20/15/10GB. Có thể đặt `CLEAN_ES_WATERMARK_LOW`, `CLEAN_ES_WATERMARK_HIGH`, `CLEAN_ES_WATERMARK_FLOOD` theo ổ của máy. Vector và artifact lớn nằm ở `CLEAN_WORK`.
-
-Ví dụ shell wrapper; thay các đường dẫn tuyệt đối và GPU cho máy chạy. Các lệnh chạy tuần tự trên một GPU; log nằm trong work directory.
-
-```bash
-CLEAN_DATA=/absolute/path/to/issued_data
-CLEAN_CONTEXTS=/absolute/path/to/real/selected-contexts
-CLEAN_MODELS=/absolute/path/to/models
-CLEAN_WORK=/absolute/path/to/new_work
-mkdir -p "$CLEAN_WORK"
-
-ir() {
-  docker run --rm --gpus '"device=0"' --network host \
-    -v "$CLEAN_DATA:/data:ro" -v "$CLEAN_CONTEXTS:/contexts:ro" -v "$CLEAN_MODELS:/models:ro" \
-    -v "$CLEAN_WORK:/work" dsc26-clean-ir:20260908-v3 \
-    --work /work --threads 3 --batch 8 "$@"
-}
-
-ir prepare --contexts /contexts --models /models
-ir train --train /data/train_IR.json
-ir predict --questions /data/public-official_IR.json
-ir predict --questions /data/private_IR.json
-ir verify
-```
-
-Kết quả: `/work/predict_<hash_nội_dung>/final/submission.zip`. Không giả định số câu hay ID dạng số. Trường `answer` nếu có trong file inference bị bỏ trước khi chạy. Đổi nội dung câu hỏi tạo thư mục khác; cache không tái dùng theo tên file.
-
-Có thể chia prepare thành `--stage corpus`, `--stage index`, `--stage dense`. `train` yêu cầu prepare đã xong. Nếu `selected-contexts` là symlink, dùng đích thật (`realpath`) cho `CLEAN_CONTEXTS`; symlink trỏ ra ngoài bind mount không đi theo vào container. Giữ nguyên mount `/data`, `/contexts`, `/models`, `/work` giữa các lần gọi. `verify` kiểm SHA input/model/artifact và ownership/số bản ghi của index. Work đã có sẽ từ chối khi source hoặc dữ liệu train đổi (kể cả chỉ đổi comment trong `src/*.py`); dùng work mới. Không chạy hai tiến trình trên cùng work, khóa `flock` sẽ từ chối.
+Có thể chia prepare thành `--stage corpus`, `--stage index`, `--stage dense`. `train` yêu cầu prepare đã xong. Giữ nguyên mount `/data`, `/contexts`, `/models`, `/work` giữa các lần gọi. `verify` kiểm SHA input/model/artifact và ownership/số bản ghi của index. Work đã có sẽ từ chối khi source hoặc dữ liệu train đổi (kể cả chỉ đổi comment trong `src/*.py`); dùng work mới. Không chạy hai tiến trình trên cùng work, khóa `flock` sẽ từ chối.
 
 ## Đánh giá trên fold dev
 

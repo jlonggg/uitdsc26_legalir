@@ -2,8 +2,8 @@
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 IMG=${IMG:-dsc26-clean-ir:20260908-v3}            # built from src/clean_ir/Dockerfile (scripts/setup.sh)
 MODELS=${MODELS:-$ROOT/models}                     # 5 HF base models, see README §3
-CTX=${CTX:-$ROOT/data/selected-contexts}           # 8,532 context_*.json (real dir, not a symlink)
-DATA=${DATA:-$ROOT/data}
+DATA=$ROOT/data                                    # all BTC data is read from here only
+CTX=$DATA/selected-contexts                        # 8,532 context_*.json (real dir, not a symlink)
 CLEAN=$ROOT/src/clean_ir                           # stage `ce` code (pipeline.py; its source hash is locked by <work>/config.json)
 APP=$ROOT/src/clean_ir_s1                          # MIL scorers + final stage: evidence / train_mil / score_mil / selector / overlay / package
 ART=$ROOT/artifacts                                # only artifacts/reference/private_V2_4bb3380c_submission.zip is shipped

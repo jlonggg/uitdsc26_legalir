@@ -1,4 +1,4 @@
-"""Fit selector a3 on TRAIN only (train labels are read here and nowhere else; no public/warmup/private rows touched).
+"""Fit selector a3 on TRAIN only (only train labels are read; no public/warmup/private rows touched).
 Inputs in $FIT (assembled by `run_from_scratch.sh a3`): the ce train outputs (pools, dense, teacher, student held-fold scores),
 S1 MIL held-fold scores mil/outer0-4, S2 MIL held-fold scores mil2/outer<MIL2_FOLDS>, lexalign_train.jsonl (7,000 rows).
   build        : 83-col matrix = ce+mil2 (77) + 6 lexalign cols, cached to $OUT/X83.npz; self-check first 73 cols == selector_stage 'ce+mil'.
@@ -159,7 +159,7 @@ def final(scorer='ce+mil2+lex'):
                            lambdarank_truncation_level=5, label_gain=[0, 1], random_state=seed, n_jobs=int(os.environ.get('CLEAN_THREADS', '8')), verbose=-1)
         m.fit(Xc, y, group=groups); m.booster_.save_model(str(M / f'seed{seed}.txt')); print('final', scorer, 'seed', seed, 'done', flush=True)
     (M / 'selector.json').write_text(json.dumps({'features': len(cols), 'scorer': scorer, 'seeds': SEEDS, 'trees': 1200, 'train_queries': len(qs),
-        'recipe': 'symmetric69_plus_mil_plus_mil2_v1' if scorer == 'ce+mil2' else 'symmetric69_plus_mil_plus_mil2_plus_lexalign_v1', 'note': f'S2 (mil2) columns NaN on folds {NANF}: no S2 OOF rows there yet (CONTEXT 50 / 51.5)', 'mil2_folds': MIL2F,
+        'recipe': 'symmetric69_plus_mil_plus_mil2_v1' if scorer == 'ce+mil2' else 'symmetric69_plus_mil_plus_mil2_plus_lexalign_v1', 'note': f'S2 (mil2) columns NaN on folds {NANF}: no S2 OOF rows there', 'mil2_folds': MIL2F,
         'evaluation': 'No unbiased end-to-end validation has been run by this fitting command.'}, indent=2))
 
 
