@@ -153,6 +153,8 @@ Số đo thật trên 2080 Ti.
 
 ```
 README.md
+DSC2026_Task1_LegalIR_Data_Overview.docx.pdf   mô tả bài toán và dữ liệu của BTC
+Scoring-Program-LegalIR.zip                    chương trình chấm của BTC (Recall + Precision)
 src/clean_ir/         tầng ce: pipeline.py (prepare/train/predict/verify, stage contract + khoá SHA source/model/corpus), src/*.py, Dockerfile, tests
 src/clean_ir_s1/      tầng MIL + final: evidence.py, train_mil.py, score_mil.py, qwen_rr.py, mil_common.py, lexalign.py,
                       selector_stage.py, features.py, train_exact_overlay.py, package.py, common.py, dense.py, tests
