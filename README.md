@@ -1,5 +1,7 @@
 # UIT-DSC 2026 — Legal IR (Task 1) — UIT - Kitchen
 
+<p align="center"><img src="./legalir-banner.svg" width="100%" alt="Legal IR"></p>
+
 Mã nguồn để tái lập bản nộp **Private Phase** của đội **UIT - Kitchen** từ dữ liệu BTC và 5 model gốc trên HuggingFace:
 
 | Leaderboard private | Recall | Precision | Ngày nộp |
